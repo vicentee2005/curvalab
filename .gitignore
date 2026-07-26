@@ -12,6 +12,9 @@ frontend/dist/
 .vercel/
 node_modules/
 
+# Borrador de la publicación (personal, no forma parte del proyecto)
+PUBLICACION.md
+
 # Editores / SO
 .DS_Store
 Thumbs.db
