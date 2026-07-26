@@ -1,0 +1,10 @@
+{
+  "name": "curvalab",
+  "private": true,
+  "version": "3.0.0",
+  "description": "Portal de herramientas de análisis de laboratorio: ajuste de curvas, superficies 3D y propagación de incertidumbres",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "cd frontend && npm run dev"
+  }
+}

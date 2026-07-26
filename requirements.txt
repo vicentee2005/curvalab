@@ -1,0 +1,13 @@
+# Dependencias de la función serverless de Vercel (api/index.py).
+#
+# Deliberadamente SIN pandas ni uvicorn: el límite de una función serverless es
+# de 250 MB descomprimidos y pandas se lleva unos 65 MB. El importador de
+# CSV/Excel se reescribió con openpyxl y el módulo csv para poder quitarlo.
+# uvicorn solo hace falta en local (lo trae backend/requirements.txt).
+fastapi==0.115.6
+pydantic>=2.0
+python-multipart==0.0.20
+numpy>=1.24
+scipy>=1.11
+sympy>=1.11
+openpyxl>=3.1

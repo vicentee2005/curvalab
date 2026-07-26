@@ -1,0 +1,110 @@
+/* ==========================================================================
+   CurvaLab — tokens de diseño (fieles al prototipo de handoff).
+   Los colores se controlan con variables CSS. El tema (claro/oscuro) se
+   cambia con el atributo data-theme en <html>; el acento con --accent.
+   ========================================================================== */
+
+:root {
+  /* Acento (por defecto azul). Opciones: #3a6df0 #0e9d8f #7c5cff #e8663d */
+  --accent: #3a6df0;
+  --accent-soft: #3a6df01f;   /* accent + alpha en claro */
+  --accent-line: #3a6df04d;
+  --on-accent: #ffffff;
+  --secondary: #e8663d;       /* recta de ajuste / acentos de error */
+
+  /* Tema CLARO (por defecto) */
+  --bg: #eef0f4;
+  --panel: #ffffff;
+  --row: #f8f9fc;
+  --row2: #f2f4f8;
+  --line: #e2e5ec;
+  --line-soft: #eef0f4;
+  --ink: #1a1d23;
+  --muted: #8b93a1;
+  --muted2: #5a6270;
+  --plot-bg: #ffffff;
+  --grid: #f0f2f6;
+  --axis: #c9cdd6;
+
+  /* Densidad (Cómoda por defecto) */
+  --gap: 16px;
+  --card-pad: 16px;
+
+  /* Insignias de rol */
+  --role-y-bg: #fdefe9;
+  --role-y-fg: #e8663d;
+  --role-z-bg: #eaf6ef;
+  --role-z-fg: #2f9e63;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --accent-soft: #3a6df030;
+  --accent-line: #3a6df055;
+
+  --bg: #14171d;
+  --panel: #1c2128;
+  --row: #232830;
+  --row2: #262c35;
+  --line: #2b313b;
+  --line-soft: #232830;
+  --ink: #e8eaee;
+  --muted: #8b93a1;
+  --muted2: #aab3c0;
+  --plot-bg: #171b21;
+  --grid: #242a33;
+  --axis: #3a4048;
+
+  --role-y-bg: #3a2620;
+  --role-z-bg: #1e2f26;
+
+  color-scheme: dark;
+}
+
+/* Densidad compacta */
+:root[data-density='compact'] {
+  --gap: 10px;
+  --card-pad: 10px;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; padding: 0; height: 100%; }
+
+body {
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+button, input, select { font-family: inherit; }
+
+select:focus,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 1px;
+}
+
+.mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+/* Scrollbars discretos */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 6px;
+  border: 2px solid var(--panel);
+}
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Utilidad para el hover de filas de menú y celdas */
+.hoverable:hover { background: var(--row); }
+.cellinput:focus { background: var(--accent-soft); }
+
+/* Animación suave de aparición de paneles */
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pop-in { animation: popIn 0.12s ease-out; }
