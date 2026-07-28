@@ -11,13 +11,10 @@ import type {
   SurfaceFitResult,
 } from './types';
 
-// El backend siempre vive en otro origen que el frontend:
-//   - en local, en http://localhost:8000 (uvicorn aparte de Vite);
-//   - desplegado, en el Space de Hugging Face, cuya URL llega por la variable
-//     de entorno VITE_API_BASE que Vercel inyecta al compilar.
-// Si en producción faltara VITE_API_BASE, la base queda vacía y las llamadas
-// fallan contra el propio dominio: la píldora de la portada lo delata en
-// seguida porque el motor aparece apagado.
+// En local el backend corre aparte, en localhost:8000 (uvicorn junto a Vite).
+// Desplegado en Vercel la API vive en el mismo origen (/api/...), servida por la
+// función serverless de `api/index.py`, así que la base es la cadena vacía.
+// VITE_API_BASE permite apuntar a otro sitio si hiciera falta.
 const API_BASE =
   import.meta.env.VITE_API_BASE ??
   (import.meta.env.DEV ? 'http://localhost:8000' : '');

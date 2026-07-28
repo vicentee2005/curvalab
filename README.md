@@ -1,27 +1,15 @@
----
-title: CurvaLab API
-emoji: 📈
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
-
-<!-- La cabecera de arriba la lee Hugging Face Spaces para construir el backend
-     con el Dockerfile. En GitHub se ve como una tabla; no molesta a nadie. -->
-
 # CurvaLab
 
 Aplicación web de **ajuste de curvas y análisis de errores** de medidas de
 laboratorio (equivalente moderno a SciDavis), con foco en visualidad y
-facilidad de uso. La matemática del ajuste corre en Python (SciPy/NumPy) y las
+facilidad de uso. La matemática del ajuste corre en Python (NumPy/SymPy) y las
 gráficas 2D/3D en Plotly.
 
 - **Frontend:** React + TypeScript + Vite, gráficas con **Plotly.js**.
-- **Backend:** **FastAPI** con el motor de ajuste (**SciPy** `curve_fit`,
-  polinomios con NumPy, fórmulas propias con **SymPy**). Sin estado, sin base de
-  datos: guardar/abrir proyecto es un fichero JSON local.
+- **Backend:** **FastAPI** con el motor de ajuste (Levenberg-Marquardt propio
+  sobre **NumPy**, polinomios con `polyfit`, fórmulas propias y derivación
+  simbólica con **SymPy**). Sin estado, sin base de datos: guardar/abrir
+  proyecto es un fichero JSON local.
 
 ## Un portal de aplicaciones
 
@@ -84,7 +72,8 @@ BestFit/
 │  ├─ app/
 │  │  ├─ main.py       API (/api/fit, /api/fit-surface, /api/propagate, …)
 │  │  ├─ schemas.py    Modelos Pydantic (contrato con el frontend)
-│  │  ├─ fitting.py    Motor de ajuste 2D (SciPy/NumPy)
+│  │  ├─ fitting.py    Motor de ajuste 2D (NumPy)
+│  │  ├─ lm.py         Levenberg-Marquardt propio (sustituye a SciPy)
 │  │  ├─ surface.py    Motor de ajuste de superficies 3D
 │  │  ├─ uncertainty.py Propagación de errores: gaussiana y Monte Carlo
 │  │  ├─ formula.py    Parseo y derivación de fórmulas propias (SymPy)
@@ -190,50 +179,62 @@ cd backend
 venv/Scripts/python -m pytest
 ```
 
-## Despliegue: dos piezas en dos sitios
+## Despliegue en Vercel
 
-El frontend y el backend se despliegan **por separado**, y no por gusto
-arquitectónico sino por una restricción medida:
-
-| Pieza | Dónde | Por qué ahí |
-|---|---|---|
-| Frontend (sitio estático) | **Vercel** | Es lo que mejor hace: CDN, HTTPS y despliegue por cada push |
-| Backend (FastAPI) | **Hugging Face Spaces** (Docker) | Una imagen Docker no tiene el límite de tamaño de una función serverless |
-
-**El intento fallido, que es la parte interesante.** Primero se metió todo en
-Vercel, con el backend como función serverless. No cabe:
-
-| Intento | Tamaño del bundle | Límite |
-|---|---|---|
-| numpy + scipy + sympy + pandas | ~305 MB | 225 MB |
-| Sin pandas, CPython 3.14 (numpy 2.5, scipy 1.18) | 258 MB | 225 MB |
-| Sin pandas, CPython 3.12 (numpy 2.2, scipy 1.16) | 242 MB | 225 MB |
-
-Quitar pandas ahorró unos 65 MB y bajar de Python 3.14 a 3.12 otros 17, pero
-seguían sobrando 17 MB. SciPy y SymPy son el producto —el motor de ajuste y la
-derivación simbólica— así que la que sobraba era la restricción, no la
-dependencia. El backend se fue a una imagen Docker.
-
-Lo que sí se quedó de aquel intento: **el importador ya no usa pandas**. Se
-reescribió con `openpyxl` y el módulo `csv` de la biblioteca estándar, con los
-mismos tests en verde y un mensaje claro cuando le das un `.xls` antiguo. Solo
-los generadores de `datos_ejemplo/` siguen usando pandas, y esos no se
-despliegan.
-
-Piezas del despliegue:
+Todo el proyecto vive en un solo sitio: el frontend se compila como sitio
+estático y el backend entero se convierte en **una función serverless**
+(`api/index.py` reexporta la misma app de FastAPI que se usa en local, así que
+el motor de cálculo es idéntico en los dos sitios).
 
 | Fichero | Para qué |
 |---|---|
-| `vercel.json` | Compila `frontend/` y hace el fallback SPA de `/2d`, `/3d`, `/incertidumbres` |
+| `vercel.json` | Compila `frontend/`, reescribe `/api/*` a la función y hace el fallback SPA de `/2d`, `/3d`, `/incertidumbres` |
+| `api/index.py` | Añade `backend/` al path y reexporta `app` |
+| `requirements.txt` (raíz) | Dependencias de la función |
+| `.python-version` | Fija CPython 3.12: las ruedas para 3.14 son bastante más grandes |
 | `package.json` (raíz) | `npm run build` → compila el frontend |
-| `Dockerfile` | Imagen del backend: instala `requirements.txt` y arranca uvicorn en el puerto 7860 |
-| `requirements.txt` (raíz) | Dependencias del backend desplegado (sin pandas ni pytest) |
 
-**Cómo se encuentran los dos.** El frontend lee la URL del backend de la
-variable `VITE_API_BASE`, que se define en Vercel y se incrusta al compilar. El
-backend acepta peticiones del dominio de Vercel mediante CORS, con una
-expresión regular que cubre también las URLs de vista previa; `CURVALAB_ORIGINS`
-permite añadir orígenes extra sin tocar el código.
+### Las 225 MB que decidieron la arquitectura
+
+Una función serverless de Vercel no puede pasar de 225 MB descomprimidos, y el
+backend original no cabía. Los intentos, medidos y no estimados:
+
+| Intento | Tamaño | ¿Cabe? |
+|---|---|---|
+| numpy + scipy + sympy + pandas | ~305 MB | no |
+| Sin pandas, CPython 3.14 (numpy 2.5, scipy 1.18) | 258 MB | no |
+| Sin pandas, CPython 3.12 (numpy 2.2, scipy 1.16) | 242 MB | no |
+| **Sin pandas ni scipy, CPython 3.12** | **~111 MB** | **sí** |
+
+Dos renuncias, cada una con su razón:
+
+**Fuera pandas (−65 MB).** Solo lo usaba el importador de CSV/Excel. Se
+reescribió con `openpyxl` y el módulo `csv` de la biblioteca estándar: mismos
+tests en verde y, de propina, un mensaje claro cuando le das un `.xls` antiguo
+en vez de un error críptico.
+
+**Fuera SciPy (−117 MB).** De toda la librería se usaba **una función**,
+`optimize.curve_fit`, en dos líneas del backend, y siempre en su forma más
+simple: Levenberg-Marquardt con jacobiano numérico, sin `bounds` ni métodos
+alternativos. Está reimplementada en [`backend/app/lm.py`](backend/app/lm.py),
+con la misma firma para que el resto del código no notara el cambio. Contrastada
+contra SciPy sobre una batería de casos, coincide **hasta ~1e-8 en los
+parámetros y ~1e-7 en las incertidumbres**; `tests/test_lm.py` la verifica
+además contra las soluciones **analíticas** de mínimos cuadrados, sin depender
+de ninguna librería externa.
+
+Reimplementarla destapó una fragilidad que ya estaba ahí: en modelos con
+soluciones equivalentes —frecuencias *alias* en `A·exp(−g·t)·cos(ω·t+φ)`, o el
+cambio de signo (ω, φ) → (−ω, −φ)— el multi-arranque desempataba con una
+tolerancia de 1e-12, que está dentro del ruido de redondeo. Cuál de las
+soluciones se devolvía dependía del azar del optimizador. Ahora, entre ajustes
+indistinguibles, se elige el más cercano a la estimación del usuario o, si no la
+dio, el de parámetros más pequeños (entre frecuencias alias, la única por debajo
+de Nyquist).
+
+En local, el frontend llama a `http://localhost:8000`; desplegado, la API vive
+en el mismo origen y la base es la cadena vacía. Se decide en
+`frontend/src/api.ts` con `import.meta.env.DEV`.
 
 > **Privacidad:** en la versión desplegada los números que escribes viajan al
 > backend para calcularse. No hay cuentas ni base de datos y no se guarda nada,

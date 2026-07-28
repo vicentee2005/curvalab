@@ -1,13 +1,13 @@
-# Dependencias para desarrollo local (uvicorn incluido).
-# La función serverless de Vercel usa el requirements.txt de la raíz.
+# Dependencias para desarrollo local (uvicorn y pytest incluidos).
+# Lo que se despliega está en el requirements.txt de la raíz.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 numpy>=1.24
-scipy>=1.11
 sympy>=1.11
 python-multipart==0.0.20
 pydantic>=2.0
 openpyxl>=3.1
 pytest>=8.0
-# pandas ya no hace falta para la app; solo lo usan los generadores de
-# datos_ejemplo/*.py, que no se despliegan.
+# Ni pandas ni scipy: pandas lo sustituyó openpyxl + csv en el importador, y de
+# scipy solo se usaba curve_fit, que ahora es app/lm.py. Los generadores de
+# datos_ejemplo/*.py siguen usando pandas, pero no forman parte de la app.

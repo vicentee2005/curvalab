@@ -24,7 +24,8 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
-from scipy.optimize import OptimizeWarning, curve_fit
+from .fitting import _EMPATE_REL
+from .lm import curve_fit
 
 # Reutilizamos las utilidades de bondad del ajuste 2D: son las mismas fórmulas
 # (R², R² ajustado, RMSE) evaluadas sobre z en vez de sobre y.
@@ -246,8 +247,7 @@ def _fit_nonlinear_surface(
     last_error: Exception | None = None
 
     # Que algunos arranques no converjan es parte del método, no un aviso útil.
-    with np.errstate(all="ignore"), warnings.catch_warnings():
-        warnings.simplefilter("ignore", OptimizeWarning)
+    with np.errstate(all="ignore"):
         for start in starts:
             try:
                 popt, pcov = curve_fit(packed, M, z, p0=start, maxfev=20000)
@@ -257,11 +257,19 @@ def _fit_nonlinear_surface(
                 ssr = float(np.sum(resid**2))
                 if not np.isfinite(ssr):
                     continue
-                if best is None or ssr < best[0] * (1 - 1e-12):
+
+                # Mismo desempate que en el ajuste 2D: entre soluciones que
+                # explican los datos igual de bien, la de parámetros menores, en
+                # vez de la que llegue antes.
+                if best is None or ssr < best[0] * (1 - _EMPATE_REL):
+                    mejora = True
+                elif ssr <= best[0] * (1 + _EMPATE_REL):
+                    mejora = float(popt @ popt) < float(best[1] @ best[1])
+                else:
+                    mejora = False
+
+                if mejora:
                     best = (ssr, popt, pcov)
-                    ss_tot = float(np.sum((z - np.mean(z)) ** 2))
-                    if ss_tot > 0 and 1.0 - ssr / ss_tot > 0.9999:
-                        break
             except (RuntimeError, ValueError, TypeError) as exc:
                 last_error = exc
                 continue

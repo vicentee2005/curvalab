@@ -1,13 +1,22 @@
-# Dependencias del backend desplegado (las instala el Dockerfile).
+# Dependencias de la función serverless de Vercel (api/index.py).
 #
-# Sin pandas: el importador de CSV/Excel se reescribió con openpyxl y el módulo
-# csv de la biblioteca estándar, así que ya no hace falta.
-# Sin pytest: los tests se ejecutan en local, no dentro de la imagen.
+# El límite de una función es de 225 MB descomprimidos. Lo que hay aquí ocupa
+# unos 125 MB; llegar a esa cifra costó dos renuncias, ambas documentadas en el
+# README:
+#
+#   - Sin pandas (~65 MB): el importador de CSV/Excel se reescribió con openpyxl
+#     y el módulo csv de la biblioteca estándar.
+#   - Sin scipy (~117 MB): solo se usaba `curve_fit`, reimplementado en
+#     backend/app/lm.py (Levenberg-Marquardt sobre NumPy).
+#
+# uvicorn no hace falta: en Vercel la app la sirve el runtime, no un servidor
+# propio. Para desarrollo local está backend/requirements.txt.
+#
+# numpy va fijado y hay un .python-version con 3.12 porque las ruedas para
+# CPython 3.14 son bastante más grandes. Antes de subir versiones, mide.
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
 pydantic>=2.0
 python-multipart==0.0.20
 numpy==2.2.6
-scipy==1.16.3
 sympy==1.14.0
 openpyxl>=3.1

@@ -1,4 +1,4 @@
-"""Motor de ajuste de curvas basado en SciPy/NumPy.
+"""Motor de ajuste de curvas basado en NumPy.
 
 Cada función de ajuste recibe los datos (x, y y opcionalmente σy) y devuelve un
 FitResponse con parámetros, incertidumbres y estadísticos de bondad del ajuste.
@@ -7,7 +7,7 @@ Convenciones:
 - Los parámetros lineales/polinómicos se obtienen con álgebra de mínimos
   cuadrados (`numpy.polyfit` con matriz de covarianza) para robustez.
 - Los ajustes no lineales (exponencial, logarítmico, potencia, fórmula propia)
-  usan `scipy.optimize.curve_fit` (Levenberg-Marquardt / trust region).
+  usan el Levenberg-Marquardt de `lm.py`.
 - Las incertidumbres de los parámetros son la raíz de la diagonal de la matriz
   de covarianza.
 - Si hay σy se hace mínimos cuadrados ponderados (`sigma=σy`,
@@ -18,9 +18,9 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
-from scipy.optimize import OptimizeWarning, curve_fit
 
 from .formula import FormulaError, build_model_function, pretty_equation
+from .lm import curve_fit
 from .schemas import FitModel, FitRequest, FitResponse, Parameter
 
 
@@ -314,6 +314,32 @@ def _candidate_p0s(
     return out
 
 
+# Dos ajustes cuyo SSR difiere menos que esto explican los datos igual de bien:
+# lo que los separa es el redondeo, no la evidencia.
+_EMPATE_REL = 1e-9
+
+
+def _preferible(popt: np.ndarray, actual: np.ndarray, referencia) -> bool:
+    """Entre dos ajustes indistinguibles, ¿es `popt` mejor elección que `actual`?
+
+    Hay modelos con soluciones que caen exactamente sobre los mismos puntos
+    muestreados y por tanto dejan el mismo SSR. En A·exp(−g·t)·cos(ω·t+φ) pasa
+    dos veces: las frecuencias *alias* (ω y ω + 2πk/Δt son la misma curva vista
+    en los puntos medidos) y el cambio de signo (ω, φ) → (−ω, −φ). Sin un
+    criterio explícito, cuál se devuelve depende de qué arranque llegue primero,
+    que es puro azar del optimizador.
+
+    Se prefiere la solución más cercana a la estimación del usuario, porque para
+    eso la da; y si no la dio, la de parámetros más pequeños, que entre
+    frecuencias alias es la única por debajo de Nyquist —la física.
+    """
+    if referencia is not None:
+        return float(np.sum((popt - referencia) ** 2)) < float(
+            np.sum((actual - referencia) ** 2)
+        )
+    return float(popt @ popt) < float(actual @ actual)
+
+
 def _fit_nonlinear(
     req: FitRequest,
     f,                       # f(x, *params)
@@ -328,6 +354,12 @@ def _fit_nonlinear(
     residuos deja. Si el usuario aporta `initial_guess`, esa va la primera (y se
     respeta si empata), pero el multi-arranque sigue actuando de red de
     seguridad frente a los mínimos locales.
+
+    Se recorren todos los arranques hasta el final, sin cortar en cuanto uno da
+    un ajuste casi perfecto: cuando el modelo admite soluciones equivalentes
+    (ver `_preferible`), parar en la primera que aparezca hace que el resultado
+    dependa del azar del optimizador. Son unas decenas de ajustes sobre datos de
+    laboratorio; el coste es imperceptible al lado de esa garantía.
     """
     x, y, sy = _clean_xy(req)
     if x.size < len(names):
@@ -357,8 +389,9 @@ def _fit_nonlinear(
 
     # Probamos muchos arranques a propósito: que algunos no converjan o no den
     # covarianza es parte del método, no un problema que deba avisarse.
-    with np.errstate(all="ignore"), warnings.catch_warnings():
-        warnings.simplefilter("ignore", OptimizeWarning)
+    referencia = np.asarray(user_p0, dtype=float) if user_p0 is not None else None
+
+    with np.errstate(all="ignore"):
         for start in starts:
             try:
                 popt, pcov = curve_fit(f, x, y, p0=start, **kwargs)
@@ -368,12 +401,16 @@ def _fit_nonlinear(
                 ssr = float(np.sum(resid**2))
                 if not np.isfinite(ssr):
                     continue
-                if best is None or ssr < best[0] * (1 - 1e-12):
+
+                if best is None or ssr < best[0] * (1 - _EMPATE_REL):
+                    mejora = True
+                elif ssr <= best[0] * (1 + _EMPATE_REL):
+                    mejora = _preferible(popt, best[1], referencia)
+                else:
+                    mejora = False
+
+                if mejora:
                     best = (ssr, popt, pcov)
-                    # Un ajuste prácticamente perfecto: no hace falta seguir.
-                    ss_tot = float(np.sum((y - np.mean(y)) ** 2))
-                    if ss_tot > 0 and 1.0 - ssr / ss_tot > 0.9999:
-                        break
             except (RuntimeError, ValueError, TypeError) as exc:
                 last_error = exc
                 continue

@@ -227,3 +227,32 @@ def test_drops_rows_with_missing_values():
     res = run_surface_fit(_req(SurfaceModel.plane, x, y, z))
     assert res.n_points == 97
     assert res.r_squared == pytest.approx(1.0, abs=1e-9)
+
+
+def test_r2_alto_no_significa_modelo_determinado():
+    """Un R² excelente puede convivir con parámetros que los datos no fijan.
+
+    Se ajusta una gaussiana 2D a un paraboloide suave. Una campana muy ancha
+    imita bien una parábola, así que el R² sale altísimo; pero la amplitud A y
+    el fondo c se compensan mutuamente y ninguno queda determinado. Es el aviso
+    que da el panel de resultados, y el motivo de que R² por sí solo no valide
+    un modelo.
+    """
+    # _scatter cubre [-5, 5]; lo estrechamos a [-2, 2] para que la campana que
+    # mejor imita la parábola sea mucho más ancha que la región medida.
+    x, y = _scatter(n=300, seed=11)
+    x, y = x * 0.4, y * 0.4
+    # Con datos exactos el residuo es ~0 y la covarianza también: hace falta
+    # ruido de medida para que la indeterminación se note, como en el laboratorio.
+    ruido = np.random.default_rng(23).normal(0, 0.01, x.size)
+    z = 2.0 - 0.05 * (x**2 + y**2) + ruido
+
+    res = run_surface_fit(_req(SurfaceModel.gaussian2d, list(x), list(y), list(z)))
+
+    assert res.r_squared > 0.95
+    params = {p.name: p for p in res.parameters}
+    indeterminados = [
+        n for n, p in params.items()
+        if p.stderr is None or not np.isfinite(p.stderr) or abs(p.stderr) > abs(p.value)
+    ]
+    assert "c" in indeterminados

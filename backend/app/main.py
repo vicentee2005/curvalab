@@ -37,14 +37,11 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# El frontend vive en otro sitio que el backend, así que hace falta CORS.
-#
-#   - En local, Vite sirve en localhost:5173 (o 4173 con `vite preview`).
-#   - Desplegado, el frontend está en Vercel. La expresión regular cubre tanto
-#     el dominio de producción como las URLs de vista previa que Vercel genera
-#     por cada commit, que cambian en cada despliegue.
-#   - CURVALAB_ORIGINS (lista separada por comas) permite añadir orígenes sin
-#     tocar el código, por si el proyecto acaba en un dominio propio.
+# CORS solo hace falta en desarrollo: Vite sirve el frontend en localhost:5173
+# (o 4173 con `vite preview`) mientras el backend escucha en el 8000. Desplegado
+# en Vercel ambos comparten origen y estas cabeceras no llegan a usarse.
+# CURVALAB_ORIGINS (lista separada por comas) permite añadir orígenes sin tocar
+# el código, por si el frontend acaba sirviéndose desde otro dominio.
 _extra_origins = [
     origen.strip()
     for origen in os.environ.get("CURVALAB_ORIGINS", "").split(",")
@@ -59,7 +56,6 @@ app.add_middleware(
         "http://localhost:4173",  # vite preview
         *_extra_origins,
     ],
-    allow_origin_regex=r"https://curvalab[\w-]*\.vercel\.app",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
