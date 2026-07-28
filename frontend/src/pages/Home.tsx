@@ -29,7 +29,11 @@ export function Home() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        // Altura fija, no mínima: `body` lleva `overflow: hidden` para los
+        // entornos 2D/3D, así que si el portal creciera por encima del viewport
+        // lo recortaría el body y aquí no habría scroll. Con altura fija el
+        // scroll ocurre dentro de este contenedor.
+        height: '100vh',
         width: '100%',
         background: 'var(--bg)',
         color: 'var(--ink)',
@@ -173,14 +177,14 @@ export function Home() {
           {esLocal ? (
             <>
               Herramienta local: los datos no salen de tu ordenador. Los cálculos los hace
-              SciPy en el backend de <span className="mono">localhost:8000</span> y los
+              NumPy en el backend de <span className="mono">localhost:8000</span> y los
               proyectos se guardan como fichero <span className="mono">.json</span> en tu
               disco.
             </>
           ) : (
             <>
               Sin cuentas y sin base de datos. Los números que escribas viajan a una función
-              serverless que los calcula con SciPy y responde: <b>no se guarda nada</b> en
+              serverless que los calcula con NumPy y responde: <b>no se guarda nada</b> en
               ningún servidor. Los proyectos se guardan como fichero{' '}
               <span className="mono">.json</span> en tu disco. Si prefieres que no salga
               nada de tu ordenador, el proyecto se puede clonar y ejecutar en local.
