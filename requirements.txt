@@ -1,19 +1,10 @@
-# Dependencias de la función serverless de Vercel (api/index.py).
+# Dependencias del backend desplegado (las instala el Dockerfile).
 #
-# El límite real de una función es de 225 MB descomprimidos, y aquí no sobra
-# casi nada, así que las versiones van CLAVADAS a propósito:
-#
-#   - Sin pandas ni uvicorn. pandas se llevaba unos 65 MB; el importador de
-#     CSV/Excel se reescribió con openpyxl y el módulo csv para poder quitarlo.
-#     uvicorn solo hace falta en local (lo trae backend/requirements.txt).
-#   - numpy y scipy fijados: las ruedas para CPython 3.14 (numpy 2.5, scipy
-#     1.18) suman 258 MB y NO caben. Con estas versiones son 215 MB.
-#     Por eso hay un .python-version con 3.12 en la raíz: si Vercel elige
-#     3.14 por su cuenta, el despliegue falla por tamaño.
-#
-# Antes de subir versiones nuevas de numpy o scipy, mide el total
-# descomprimido de las ruedas manylinux.
+# Sin pandas: el importador de CSV/Excel se reescribió con openpyxl y el módulo
+# csv de la biblioteca estándar, así que ya no hace falta.
+# Sin pytest: los tests se ejecutan en local, no dentro de la imagen.
 fastapi==0.115.6
+uvicorn[standard]==0.34.0
 pydantic>=2.0
 python-multipart==0.0.20
 numpy==2.2.6

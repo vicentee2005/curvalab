@@ -1,10 +1,13 @@
 """API FastAPI de CurvaLab / BestFit.
 
-Backend sin estado: expone el motor de ajuste (SciPy) y la importación de
-tablas (pandas) al frontend React. No hay base de datos ni sesiones; guardar y
-abrir proyectos es responsabilidad del cliente (fichero JSON local).
+Backend sin estado: expone el motor de ajuste (SciPy), la propagación de
+incertidumbres (SymPy) y la importación de tablas al frontend React. No hay
+base de datos ni sesiones; guardar y abrir proyectos es responsabilidad del
+cliente (fichero JSON local).
 """
 from __future__ import annotations
+
+import os
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,15 +37,29 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# En desarrollo el frontend (Vite) corre en localhost:5173. Permitimos ese
-# origen y localhost en cualquier puerto para comodidad local.
+# El frontend vive en otro sitio que el backend, así que hace falta CORS.
+#
+#   - En local, Vite sirve en localhost:5173 (o 4173 con `vite preview`).
+#   - Desplegado, el frontend está en Vercel. La expresión regular cubre tanto
+#     el dominio de producción como las URLs de vista previa que Vercel genera
+#     por cada commit, que cambian en cada despliegue.
+#   - CURVALAB_ORIGINS (lista separada por comas) permite añadir orígenes sin
+#     tocar el código, por si el proyecto acaba en un dominio propio.
+_extra_origins = [
+    origen.strip()
+    for origen in os.environ.get("CURVALAB_ORIGINS", "").split(",")
+    if origen.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:4173",  # vite preview
+        *_extra_origins,
     ],
+    allow_origin_regex=r"https://curvalab[\w-]*\.vercel\.app",
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
