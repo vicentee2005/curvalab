@@ -1,9 +1,9 @@
 # Datos de ejemplo para probar CurvaLab
 
-Ocho ficheros Excel con datos sintéticos (ruido gaussiano, semilla fija):
-**01–04 para el entorno 2D** (`/2d`) y **05–08 para el de superficies**
-(`/3d`). Las cabeceras están puestas para que la **importación inteligente**
-asigne sola los roles.
+Nueve ficheros Excel con datos sintéticos (ruido gaussiano, semilla fija):
+**01–04 para el entorno 2D** (`/2d`), **05–08 para el de superficies** (`/3d`)
+y **09 para el de incertidumbres** (`/incertidumbres`). Las cabeceras están
+puestas para que la **importación inteligente** asigne sola los roles.
 
 ---
 
@@ -95,10 +95,11 @@ ello. Es un buen recordatorio de que un R² alto no valida un modelo.
 
 ---
 
-# Entorno de incertidumbres — sin fichero
+# Entorno de incertidumbres
 
 Este entorno arranca ya con un **péndulo simple** medido a seis longitudes
-(columnas `L`, `σL`, `T`, `σT`), así que no hace falta importar nada.
+(columnas `L`, `σL`, `T`, `σT`), así que para una primera prueba no hace falta
+importar nada.
 
 **Medida única.** Fórmula `4*pi**2*L/T**2` con L = 1.000 ± 0.001 m y
 T = 2.006 ± 0.004 s:
@@ -115,6 +116,62 @@ relativo cayendo del 1.02 % al 0.37 % conforme el péndulo se alarga. Con
 *Ajustar en 2D* se abre el entorno de curvas con `g ± σg` listo: el ajuste
 lineal da pendiente 0.011 ± 0.068 (compatible con cero, como debe ser: g no
 depende de L) y ordenada 9.79 ± 0.06.
+
+## Propagación por columnas con fichero (`09_densidad_cilindros.xlsx`)
+
+Ocho cilindros de aluminio torneados a distintos tamaños. De cada uno se ha
+medido la masa con una balanza de 0.01 g y el diámetro y la altura con un
+calibre de 0.005 cm, para calcular la densidad:
+
+    ρ = 4·m / (π·D²·h)
+
+Frente a la tabla del péndulo que ya viene cargada, aquí hay **tres** magnitudes
+con error en vez de dos, así que el reparto de contribuciones tiene más que
+contar.
+
+**Cómo usarlo:**
+
+1. `Archivo → Importar CSV / TXT / Excel` → `09_densidad_cilindros.xlsx`.
+   Al importar, el entorno pasa solo a modo **Por filas**.
+2. Escribe la fórmula: `4*m/(pi*D**2*h)`. Las variables `m`, `D` y `h` aparecen
+   solas en la tabla de abajo.
+3. Engancha cada una a sus dos columnas:
+
+   | Variable | Valor | Error |
+   |---|---|---|
+   | `m` | `m (g)` | `σm (g)` |
+   | `D` | `D (cm)` | `σD (cm)` |
+   | `h` | `h (cm)` | `σh (cm)` |
+
+4. `Cálculo → Propagar el error`.
+
+**Resultados esperados (comprobados sobre la web desplegada):**
+
+| Fila | ρ (g/cm³) | σρ | Error relativo |
+|---|---|---|---|
+| 1 (el más pequeño) | 2.721 | 0.038 | 1.39 % |
+| 2 | 2.702 | 0.029 | 1.06 % |
+| 3 | 2.735 | 0.024 | 0.87 % |
+| 4 | 2.670 | 0.018 | 0.69 % |
+| 5 | 2.691 | 0.015 | 0.57 % |
+| 6 | 2.703 | 0.014 | 0.51 % |
+| 7 | 2.705 | 0.013 | 0.47 % |
+| 8 (el más grande) | 2.697 | 0.011 | 0.41 % |
+
+Las ocho filas son compatibles con el aluminio (ρ = 2.70 g/cm³): la desviación
+mayor es de 1.7 σ y la media cuadrática, 0.85 σ. El error relativo se reduce a
+la tercera parte del cilindro pequeño al grande, aunque el calibre sea el mismo:
+lo que importa no es el error absoluto sino cuánto vale frente a lo medido.
+
+**Lo que enseña el desglose.** Pon la primera fila en modo *Medida única* y mira
+las contribuciones: **D aporta el 82 %** del error, la masa el 13 % y la altura
+el 6 %. El diámetro entra al cuadrado, así que su error pesa el doble; medir
+mejor el diámetro es lo único que rebaja de verdad la incertidumbre. Es la misma
+lección que el período en el péndulo.
+
+> Al importar, la asignación automática de roles marca `m` como X y `D` como Y.
+> Aquí da igual —en este entorno cada variable se engancha a mano desde su
+> desplegable— pero conviene revisarlos si luego usas *Ajustar en 2D*.
 
 ## Una prueba interesante
 
@@ -134,4 +191,8 @@ backend/venv/Scripts/python datos_ejemplo/generar_datos.py
 
 ```bash
 backend/venv/Scripts/python datos_ejemplo/generar_datos_3d.py
+```
+
+```bash
+backend/venv/Scripts/python datos_ejemplo/generar_datos_incertidumbres.py
 ```
