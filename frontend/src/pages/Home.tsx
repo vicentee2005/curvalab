@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { checkHealth } from '../api';
+import { Logo } from '../components/Logo';
 import { useAppTheme } from '../hooks/useAppTheme';
 
 export function Home() {
@@ -329,32 +330,6 @@ function StatusPill({ up, esLocal }: { up: boolean | null; esLocal: boolean }) {
   );
 }
 
-function Logo() {
-  return (
-    <div
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: 7,
-        background: 'var(--accent)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        style={{
-          width: 12,
-          height: 12,
-          border: '2px solid var(--on-accent)',
-          borderRadius: '50%',
-          borderTopColor: 'transparent',
-          transform: 'rotate(45deg)',
-        }}
-      />
-    </div>
-  );
-}
 
 /** Miniatura: nube de puntos con su curva de ajuste. */
 function Art2D() {

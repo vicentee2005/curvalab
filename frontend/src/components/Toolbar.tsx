@@ -2,6 +2,7 @@
 // La comparten el entorno 2D y el 3D; el logo lleva siempre a la portada.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Logo } from './Logo';
 
 export interface MenuItem {
   label?: string;
@@ -83,28 +84,7 @@ export function Toolbar({
             color: 'inherit',
           }}
         >
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 7,
-              background: 'var(--accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <div
-              style={{
-                width: 12,
-                height: 12,
-                border: '2px solid var(--on-accent)',
-                borderRadius: '50%',
-                borderTopColor: 'transparent',
-                transform: 'rotate(45deg)',
-              }}
-            />
-          </div>
+          <Logo />
           <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.2px' }}>
             {brand}
           </div>
