@@ -12,8 +12,9 @@ frontend/dist/
 .vercel/
 node_modules/
 
-# Borrador de la publicación (personal, no forma parte del proyecto)
+# Borradores personales de la publicación (no forman parte del proyecto)
 PUBLICACION.md
+GUION_VIDEO.txt
 
 # Editores / SO
 .DS_Store
